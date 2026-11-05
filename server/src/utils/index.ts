@@ -4,3 +4,4 @@ export const formatResponse = <T>(data: T, message = 'Success') => ({
   message,
   data,
 });
+

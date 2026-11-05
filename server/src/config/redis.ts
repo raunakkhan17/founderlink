@@ -48,3 +48,4 @@ export const connectRedis = (): Redis => {
 
 export const getRedisStatus = (): string => redisStatus;
 export const getRedisClient = (): Redis | null => redisClient;
+

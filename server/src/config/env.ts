@@ -20,3 +20,4 @@ export const config = {
   STORAGE_BUCKET: process.env.STORAGE_BUCKET || '',
   STORAGE_PUBLIC_URL: process.env.STORAGE_PUBLIC_URL || '',
 };
+

@@ -17,3 +17,4 @@ describe('Health Check Route', () => {
     expect(res.body).toHaveProperty('success', false);
   });
 });
+

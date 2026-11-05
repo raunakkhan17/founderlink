@@ -29,3 +29,4 @@ export const errorHandler = (
     ...(config.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
+

@@ -14,3 +14,4 @@ export const getHealth = (_req: Request, res: Response): void => {
     version: '1.0.0',
   });
 };
+

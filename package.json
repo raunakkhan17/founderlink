@@ -16,3 +16,4 @@
     "lint": "npm run lint:server && npm run lint:client"
   }
 }
+
