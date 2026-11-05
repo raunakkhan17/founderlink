@@ -48,3 +48,4 @@ const MessageSchema = new Schema<IMessage>(
 MessageSchema.index({ connectionId: 1, createdAt: 1 });
 
 export const Message = model<IMessage>('Message', MessageSchema);
+

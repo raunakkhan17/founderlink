@@ -133,3 +133,4 @@ const StartupSchema = new Schema<IStartup>(
 StartupSchema.index({ industry: 1, stage: 1, status: 1 });
 
 export const Startup = model<IStartup>('Startup', StartupSchema);
+

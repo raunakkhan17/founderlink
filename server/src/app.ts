@@ -2,6 +2,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import { config } from './config/env';
 import { globalRateLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
@@ -11,6 +12,9 @@ const app: Application = express();
 
 // Security HTTP headers
 app.use(helmet());
+
+// Cookie parser
+app.use(cookieParser());
 
 // CORS configuration
 app.use(

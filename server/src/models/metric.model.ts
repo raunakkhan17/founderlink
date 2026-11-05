@@ -69,3 +69,4 @@ const MetricSchema = new Schema<IMetric>(
 MetricSchema.index({ startupId: 1, month: 1 }, { unique: true });
 
 export const Metric = model<IMetric>('Metric', MetricSchema);
+

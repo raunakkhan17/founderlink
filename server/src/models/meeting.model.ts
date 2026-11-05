@@ -62,3 +62,4 @@ MeetingSchema.index({ connectionId: 1, scheduledAt: 1 });
 MeetingSchema.index({ createdBy: 1, scheduledAt: 1 });
 
 export const Meeting = model<IMeeting>('Meeting', MeetingSchema);
+

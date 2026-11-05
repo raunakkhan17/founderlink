@@ -51,3 +51,4 @@ AccessRequestSchema.index({ investorId: 1, documentId: 1 }, { unique: true });
 AccessRequestSchema.index({ startupId: 1, status: 1 });
 
 export const AccessRequest = model<IAccessRequest>('AccessRequest', AccessRequestSchema);
+

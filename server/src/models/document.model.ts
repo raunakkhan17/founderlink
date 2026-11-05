@@ -65,3 +65,4 @@ DocumentSchema.index({ startupId: 1, accessLevel: 1 });
 DocumentSchema.index({ type: 1 });
 
 export const DocumentModel = model<IDocument>('Document', DocumentSchema);
+

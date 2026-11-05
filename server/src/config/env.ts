@@ -19,5 +19,8 @@ export const config = {
   STORAGE_SECRET_KEY: process.env.STORAGE_SECRET_KEY || '',
   STORAGE_BUCKET: process.env.STORAGE_BUCKET || '',
   STORAGE_PUBLIC_URL: process.env.STORAGE_PUBLIC_URL || '',
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@founderlink.com',
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'AdminPassword123!',
+  ADMIN_NAME: process.env.ADMIN_NAME || 'Platform Admin',
 };
 

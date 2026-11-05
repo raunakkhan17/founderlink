@@ -24,6 +24,12 @@ export interface IUser extends Document {
   bio?: string;
   location?: string;
   investorProfile?: IInvestorProfile;
+  loginAttempts: number;
+  lockUntil?: Date | null;
+  emailVerificationToken?: string | null;
+  emailVerificationExpires?: Date | null;
+  resetPasswordToken?: string | null;
+  resetPasswordExpires?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -118,6 +124,31 @@ const UserSchema = new Schema<IUser>(
     investorProfile: {
       type: InvestorProfileSchema,
       default: undefined,
+    },
+    loginAttempts: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+      default: null,
+    },
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
     },
   },
   {

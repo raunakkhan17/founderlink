@@ -46,8 +46,10 @@ const ConnectionSchema = new Schema<IConnection>(
   }
 );
 
-// Compound Index: connections(founderId, investorId)
+// Unique compound index: prevents duplicate connection between founder, investor, and startup
+ConnectionSchema.index({ founderId: 1, investorId: 1, startupId: 1 }, { unique: true });
 ConnectionSchema.index({ founderId: 1, investorId: 1 });
 ConnectionSchema.index({ startupId: 1, status: 1 });
 
 export const Connection = model<IConnection>('Connection', ConnectionSchema);
+
