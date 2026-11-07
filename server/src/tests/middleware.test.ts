@@ -128,3 +128,4 @@ describe('Auth Middleware Unit Tests', () => {
     await User.updateOne({ _id: mockUser._id }, { verificationStatus: 'approved' });
   });
 });
+

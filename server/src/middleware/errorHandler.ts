@@ -14,19 +14,33 @@ export const errorHandler = (
   _next: NextFunction
 ): void => {
   const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  const isDevelopment = (process.env.NODE_ENV || config.NODE_ENV) === 'development';
+  const isProduction = (process.env.NODE_ENV || config.NODE_ENV) === 'production';
 
-  console.error('[Error]', {
-    message: err.message,
-    stack: err.stack,
-    statusCode,
-  });
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('[Error]', {
+      message: err.message,
+      stack: err.stack,
+      statusCode,
+    });
+  }
 
-  res.status(statusCode).json({
+  // In production, return a safe message for unhandled/internal (500) errors
+  let safeMessage = err.message || 'Internal Server Error';
+  if (isProduction && statusCode === 500 && !err.isOperational) {
+    safeMessage = 'Internal Server Error';
+  }
+
+  const responseBody: Record<string, any> = {
     success: false,
     status: statusCode,
-    message,
-    ...(config.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+    message: safeMessage,
+  };
+
+  if (isDevelopment) {
+    responseBody.stack = err.stack;
+  }
+
+  res.status(statusCode).json(responseBody);
 };
 

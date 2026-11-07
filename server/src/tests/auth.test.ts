@@ -85,7 +85,7 @@ describe('Auth & Authorization Endpoints & Middleware', () => {
       expect(res.body.message).toContain('Admin account cannot be self-registered');
     });
 
-    it('should reject duplicate email registration', async () => {
+    it('should reject duplicate email registration with 409 Conflict', async () => {
       const res = await request(app)
         .post('/api/auth/register')
         .send({
@@ -95,7 +95,8 @@ describe('Auth & Authorization Endpoints & Middleware', () => {
           role: 'founder',
         });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
       expect(res.body.message).toContain('already registered');
     });
   });
@@ -286,3 +287,4 @@ describe('Auth & Authorization Endpoints & Middleware', () => {
     });
   });
 });
+
