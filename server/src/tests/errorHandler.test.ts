@@ -51,3 +51,4 @@ describe('Global Error Handler Middleware', () => {
     expect(res.body.stack).toBeUndefined();
   });
 });
+
