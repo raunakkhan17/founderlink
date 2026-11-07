@@ -1,5 +1,6 @@
 import request from 'supertest';
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 import app from '../app';
 import { User } from '../models/user.model';
 import { config } from '../config/env';
@@ -273,6 +274,54 @@ describe('Auth & Authorization Endpoints & Middleware', () => {
     it('GET /api/auth/me should reject request without token with 401', async () => {
       const res = await request(app).get('/api/auth/me');
       expect(res.status).toBe(401);
+    });
+
+    it('GET /api/auth/me should reject an expired access token with 401', async () => {
+      const user = await User.findOne({ email: founderEmail });
+      // Generate a token that expired 1 hour ago
+      const expiredToken = jwt.sign(
+        {
+          userId: user!._id.toString(),
+          role: user!.role,
+          email: user!.email,
+        },
+        config.JWT_SECRET,
+        { expiresIn: '-1h' }
+      );
+
+      const res = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${expiredToken}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('Invalid or expired access token');
+    });
+
+    it('POST /api/auth/refresh with a valid refresh cookie should issue a new access token', async () => {
+      const user = await User.findOne({ email: founderEmail });
+      const validRefreshToken = jwt.sign(
+        {
+          userId: user!._id.toString(),
+          role: user!.role,
+          email: user!.email,
+        },
+        config.JWT_REFRESH_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      const res = await request(app)
+        .post('/api/auth/refresh')
+        .set('Cookie', [`refreshToken=${validRefreshToken}`]);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.accessToken).toBeDefined();
+
+      // Verify the new access token is valid and decodes properly
+      const decoded = jwt.verify(res.body.data.accessToken, config.JWT_SECRET) as any;
+      expect(decoded.userId).toBe(user!._id.toString());
+      expect(decoded.email).toBe(user!.email);
     });
   });
 
