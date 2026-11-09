@@ -20,9 +20,14 @@ export async function apiRequest<T = unknown>(
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
+
+  if (typeof FormData !== 'undefined' && options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  } else if (!headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('accessToken');

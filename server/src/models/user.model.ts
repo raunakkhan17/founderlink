@@ -23,6 +23,7 @@ export interface IUser extends Document {
   headline?: string;
   bio?: string;
   location?: string;
+  profileViewsCount: number;
   investorProfile?: IInvestorProfile;
   loginAttempts: number;
   lockUntil?: Date | null;
@@ -120,6 +121,11 @@ const UserSchema = new Schema<IUser>(
       type: String,
       trim: true,
       maxlength: [100, 'Location must be under 100 characters'],
+    },
+    profileViewsCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Profile views count cannot be negative'],
     },
     investorProfile: {
       type: InvestorProfileSchema,
