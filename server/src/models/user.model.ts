@@ -25,6 +25,7 @@ export interface IUser extends Document {
   location?: string;
   profileViewsCount: number;
   investorProfile?: IInvestorProfile;
+  savedStartups?: Types.ObjectId[];
   loginAttempts: number;
   lockUntil?: Date | null;
   emailVerificationToken?: string | null;
@@ -130,6 +131,11 @@ const UserSchema = new Schema<IUser>(
     investorProfile: {
       type: InvestorProfileSchema,
       default: undefined,
+    },
+    savedStartups: {
+      type: [Schema.Types.ObjectId],
+      ref: 'Startup',
+      default: [],
     },
     loginAttempts: {
       type: Number,

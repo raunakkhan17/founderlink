@@ -2,6 +2,8 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Startup } from '../models/startup.model';
 import { DocumentModel, DocumentType, AccessLevel } from '../models/document.model';
+import { User } from '../models/user.model';
+import { AuditLog } from '../models/auditLog.model';
 import { StorageService } from '../services/storage.service';
 import mongoose from 'mongoose';
 
@@ -56,16 +58,113 @@ export class StartupController {
     }
   }
 
-  static async getMyStartups(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  static async getStartups(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const startups = await Startup.find({ founderId: req.user!._id }).sort({ createdAt: -1 });
+      const isFounder = req.user?.role === 'founder';
+      const isBrowse = req.query.browse === 'true';
+      const hasSearchOrFilter = Boolean(
+        req.query.search ||
+        req.query.industry ||
+        req.query.stage ||
+        req.query.minFunding ||
+        req.query.maxFunding ||
+        req.query.sort ||
+        req.query.page
+      );
+
+      // If founder requests without browse or filter flags, return founder's own startups (backward compatibility)
+      if (isFounder && !isBrowse && !hasSearchOrFilter) {
+        const startups = await Startup.find({ founderId: req.user!._id }).sort({ createdAt: -1 });
+        res.status(200).json({
+          success: true,
+          data: { startups, total: startups.length },
+        });
+        return;
+      }
+
+      // Marketplace / Investor browse query: Approved only!
+      const query: Record<string, any> = { status: 'approved' };
+
+      // Search (matches name, tagline, problem, solution, industry)
+      if (req.query.search) {
+        const searchRegex = new RegExp(String(req.query.search).trim(), 'i');
+        query.$or = [
+          { name: searchRegex },
+          { tagline: searchRegex },
+          { problem: searchRegex },
+          { solution: searchRegex },
+          { industry: searchRegex },
+        ];
+      }
+
+      // Industry filter
+      if (req.query.industry && req.query.industry !== 'all') {
+        query.industry = req.query.industry;
+      }
+
+      // Stage filter
+      if (req.query.stage && req.query.stage !== 'all') {
+        query.stage = req.query.stage;
+      }
+
+      // Funding range
+      if (req.query.minFunding !== undefined || req.query.maxFunding !== undefined) {
+        query.fundingAsk = {};
+        if (req.query.minFunding !== undefined && req.query.minFunding !== '') {
+          query.fundingAsk.$gte = Number(req.query.minFunding);
+        }
+        if (req.query.maxFunding !== undefined && req.query.maxFunding !== '') {
+          query.fundingAsk.$lte = Number(req.query.maxFunding);
+        }
+        if (Object.keys(query.fundingAsk).length === 0) {
+          delete query.fundingAsk;
+        }
+      }
+
+      // Sorting
+      let sortOption: Record<string, any> = { createdAt: -1 };
+      if (req.query.sort === 'views') {
+        sortOption = { viewsCount: -1 };
+      } else if (req.query.sort === 'funding_asc') {
+        sortOption = { fundingAsk: 1 };
+      } else if (req.query.sort === 'funding_desc') {
+        sortOption = { fundingAsk: -1 };
+      } else if (req.query.sort === 'recent') {
+        sortOption = { createdAt: -1 };
+      }
+
+      // Pagination
+      const page = Math.max(1, parseInt(String(req.query.page || '1'), 10));
+      const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || '12'), 10)));
+      const skip = (page - 1) * limit;
+
+      const total = await Startup.countDocuments(query);
+      const startups = await Startup.find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limit)
+        .populate('founderId', 'name email avatarUrl headline');
+
+      const totalPages = Math.ceil(total / limit) || 1;
+
       res.status(200).json({
         success: true,
-        data: { startups },
+        data: {
+          startups,
+          total,
+          page,
+          totalPages,
+          limit,
+        },
       });
     } catch (error) {
       next(error);
     }
+  }
+
+  // Alias for backward compatibility
+  static async getMyStartups(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    return StartupController.getStartups(req, res, next);
   }
 
   static async getStartupById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -77,7 +176,7 @@ export class StartupController {
         return;
       }
 
-      const startup = await Startup.findById(id).populate('founderId', 'name email avatarUrl headline');
+      const startup = await Startup.findById(id).populate('founderId', 'name email avatarUrl headline bio');
 
       if (!startup) {
         res.status(404).json({ success: false, message: 'Startup not found' });
@@ -85,7 +184,9 @@ export class StartupController {
       }
 
       // If user is owner or admin, or if startup is approved, allow access
-      const isOwner = req.user && startup.founderId._id.toString() === req.user._id.toString();
+      const founderDoc = startup.founderId as any;
+      const founderIdStr = founderDoc?._id ? founderDoc._id.toString() : startup.founderId.toString();
+      const isOwner = req.user && founderIdStr === req.user._id.toString();
       const isAdmin = req.user && req.user.role === 'admin';
 
       if (!isOwner && !isAdmin && startup.status !== 'approved') {
@@ -96,15 +197,131 @@ export class StartupController {
         return;
       }
 
-      // Increment view count if viewed by someone else
-      if (!isOwner) {
+      // Increment view count: once per investor per day
+      if (!isOwner && req.user?.role === 'investor') {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const viewedToday = await AuditLog.findOne({
+          userId: req.user._id,
+          action: 'startup_view',
+          targetId: startup._id,
+          createdAt: { $gte: startOfDay },
+        });
+
+        if (!viewedToday) {
+          startup.viewsCount = (startup.viewsCount || 0) + 1;
+          await startup.save();
+
+          await AuditLog.create({
+            userId: req.user._id,
+            action: 'startup_view',
+            targetType: 'startup',
+            targetId: startup._id,
+            ip: req.ip,
+          });
+        }
+      } else if (!isOwner && !req.user) {
         startup.viewsCount = (startup.viewsCount || 0) + 1;
         await startup.save();
       }
 
+      // Fetch documents for startup
+      const documents = await DocumentModel.find({ startupId: startup._id }).sort({ createdAt: -1 });
+
       res.status(200).json({
         success: true,
-        data: { startup },
+        data: {
+          startup,
+          documents,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async saveStartup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        res.status(400).json({ success: false, message: 'Invalid startup ID' });
+        return;
+      }
+
+      const startup = await Startup.findById(id);
+      if (!startup) {
+        res.status(404).json({ success: false, message: 'Startup not found' });
+        return;
+      }
+
+      const user = await User.findById(req.user!._id);
+      if (!user) {
+        res.status(404).json({ success: false, message: 'User not found' });
+        return;
+      }
+
+      if (!user.savedStartups) {
+        user.savedStartups = [];
+      }
+
+      const objId = new mongoose.Types.ObjectId(id);
+      if (!user.savedStartups.some((sid) => sid.toString() === id)) {
+        user.savedStartups.push(objId);
+        await user.save();
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Startup saved to watchlist',
+        data: { savedStartups: user.savedStartups },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async unsaveStartup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        res.status(400).json({ success: false, message: 'Invalid startup ID' });
+        return;
+      }
+
+      const user = await User.findById(req.user!._id);
+      if (!user) {
+        res.status(404).json({ success: false, message: 'User not found' });
+        return;
+      }
+
+      if (user.savedStartups) {
+        user.savedStartups = user.savedStartups.filter((sid) => sid.toString() !== id);
+        await user.save();
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Startup removed from watchlist',
+        data: { savedStartups: user.savedStartups || [] },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getSavedStartups(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const user = await User.findById(req.user!._id).populate({
+        path: 'savedStartups',
+        populate: { path: 'founderId', select: 'name email avatarUrl headline' },
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          savedStartups: user?.savedStartups || [],
+        },
       });
     } catch (error) {
       next(error);

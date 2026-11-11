@@ -94,4 +94,35 @@ export class StorageService {
       }
     }
   }
+
+  static getSignedUrl(keyOrUrl: string, expiresInSeconds: number = 300): string {
+    const expires = Math.floor(Date.now() / 1000) + expiresInSeconds;
+    const signature = crypto
+      .createHmac('sha256', config.JWT_SECRET)
+      .update(`${keyOrUrl}:${expires}`)
+      .digest('hex');
+    const separator = keyOrUrl.includes('?') ? '&' : '?';
+    return `${keyOrUrl}${separator}signature=${signature}&expires=${expires}`;
+  }
+
+  static verifySignedUrl(urlWithSig: string): boolean {
+    try {
+      const parsed = new URL(urlWithSig);
+      const signature = parsed.searchParams.get('signature');
+      const expires = parsed.searchParams.get('expires');
+      if (!signature || !expires) return false;
+      if (Date.now() / 1000 > parseInt(expires, 10)) return false;
+
+      parsed.searchParams.delete('signature');
+      parsed.searchParams.delete('expires');
+      const cleanUrl = parsed.toString().replace(/\?$/, '');
+      const expected = crypto
+        .createHmac('sha256', config.JWT_SECRET)
+        .update(`${cleanUrl}:${expires}`)
+        .digest('hex');
+      return signature === expected;
+    } catch {
+      return false;
+    }
+  }
 }
