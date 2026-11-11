@@ -2,64 +2,78 @@ name: FounderLink CI
 
 on:
   push:
-    branches: [ "main", "master", "develop" ]
-  pull_request:
-    branches: [ "main", "master", "develop" ]
 
 jobs:
-  server-ci:
+  server:
     name: Server Lint & Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      PORT: 5000
+      CLIENT_URL: http://localhost:3000
+      MONGO_URI: mongodb://localhost:27017/founderlink_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci_test_access_secret_not_for_production
+      JWT_REFRESH_SECRET: ci_test_refresh_secret_not_for_production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: 'server/package-lock.json'
-
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/package-lock.json
       - name: Install server dependencies
         run: npm ci
-        working-directory: ./server
-
       - name: Server Lint
-        run: npm run lint
-        working-directory: ./server
-
+        run: npm run lint --if-present
       - name: Server Tests
-        run: npm run test
-        working-directory: ./server
+        run: npm test
 
-  client-ci:
+  client:
     name: Client Lint & Build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: 'client/package-lock.json'
-
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
       - name: Install client dependencies
-        run: npm ci
-        working-directory: ./client
-
+        run: npm ci --legacy-peer-deps
       - name: Client Lint
         run: npm run lint
-        working-directory: ./client
-
       - name: Client Test
         run: npm run test --if-present
-        working-directory: ./client
-
       - name: Client Build
         run: npm run build
-        working-directory: ./client
-
+        
