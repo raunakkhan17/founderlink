@@ -230,4 +230,4 @@ Add a `LICENSE` file (for example MIT) before making the repository public.
 ## Author
 
 **Raunak Khan**
-linkedin: [@raunakkhan](www.linkedin.com/in/raunakkhan)
+linkedin: [raunakkhan](www.linkedin.com/in/raunakkhan)
