@@ -2,10 +2,6 @@
 
 **A LinkedIn-style platform where founders pitch startups and investors discover, evaluate, and connect with them, with confidential documents protected at every step.**
 
-![Status](https://img.shields.io/badge/status-in%20development-blue)
-![Stack](https://img.shields.io/badge/stack-Next.js%20%7C%20Node.js%20%7C%20MongoDB-0A66C2)
-![CI](https://img.shields.io/badge/CI-GitHub%20Actions-success)
-
 ---
 
 ## Why FounderLink?
@@ -223,17 +219,6 @@ Tests use a separate database (`founderlink_test_models`), so they never touch y
 - Stack traces are hidden when `NODE_ENV=production`.
 - Uploaded files are never committed. `server/uploads/` and `.env` are git-ignored.
 
-**Before deploying:** change all default secrets and the admin password, set cookies to `Secure`, serve everything over HTTPS, and move file storage to R2 or S3 with private buckets.
-
----
-
-## Contributing
-
-1. Fork the repository and create a branch (`git checkout -b feature/my-feature`).
-2. Make your change and add tests.
-3. Run `npx tsc --noEmit`, `npm run lint`, and `npm test`.
-4. Open a pull request.
-
 ---
 
 ## License
@@ -245,4 +230,4 @@ Add a `LICENSE` file (for example MIT) before making the repository public.
 ## Author
 
 **Raunak Khan**
-GitHub: [@raunakkhan17](https://github.com/raunakkhan17)
+linkedin: [@raunakkhan](www.linkedin.com/in/raunakkhan)
